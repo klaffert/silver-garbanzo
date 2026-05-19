@@ -42,6 +42,8 @@ Only include a category in the array if it has at least one finding. Omit catego
     
     The code is written in ${request.language}. Apply language-specific best practices and idioms in your review.
 
+    Code that is functional but has type safety issues should score between 60-75, not below 50.
+    
     Here is the code to review:
     ${request.code}
     `;      

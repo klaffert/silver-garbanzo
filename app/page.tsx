@@ -7,9 +7,9 @@ import type { ReviewResult} from '@/types';
 const LANGUAGES = ['JavaScript', 'TypeScript', 'Python', 'Java', 'C#', 'Ruby', 'Go', 'PHP'];
 
 const SEVERITY_STYLES = {
-    critical: { label: 'Critical', border: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)' },
-    warning: { label: 'Warning', border: '#d97706', bg: 'rgba(217, 119, 6, 0.1)' },
-    info: { label: 'Info', border: '#2563eb', bg: 'rgba(37, 99, 235, 0.1)' },
+  critical: { label: 'Critical', classes: 'border-red-500 bg-red-50' },
+  warning:  { label: 'Warning',  classes: 'border-yellow-500 bg-yellow-50' },
+  info:     { label: 'Info',     classes: 'border-blue-500 bg-blue-50' },
 };
 
 export default function Home() {
@@ -43,12 +43,17 @@ export default function Home() {
                 body: JSON.stringify({ code, language }),
             });
 
-            if (!response.ok || !response.body)  {
-                const errorData = await response.json();
-                setErrorMessage(errorData.error || 'Unknown error');
-                setStatus('error');
-                return;
-            }
+if (!response.ok || !response.body) {
+  const text = await response.text();
+  try {
+    const errorData = JSON.parse(text);
+    setErrorMessage(errorData.error || 'Unknown error');
+  } catch {
+    setErrorMessage(text || 'Unknown error');
+  }
+  setStatus('error');
+  return;
+}
 
             // 4. Stream response
             const reader = response.body.getReader();
@@ -81,17 +86,17 @@ export default function Home() {
     }
 
 return (
-    <main style={{ maxWidth: 800, margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+    <main className="p-8 font-sans">
+      <h1 className="text-lg font-bold mb-4">
         Code Reviewer
       </h1>
 
       {/* Input */}
-      <div style={{ marginBottom: '1rem' }}>
+      <div className="mb-4">
         <select
           value={language}
           onChange={e => setLanguage(e.target.value)}
-          style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem' }}
+          className="mb-2 p-1 border rounded text-sm"
         >
           {LANGUAGES.map(l => (
             <option key={l} value={l}>{l}</option>
@@ -103,100 +108,57 @@ return (
           onChange={e => setCode(e.target.value)}
           placeholder="Paste your code here..."
           rows={12}
-          style={{
-            display: 'block',
-            width: '100%',
-            fontFamily: 'monospace',
-            fontSize: '0.875rem',
-            padding: '0.75rem',
-            border: '1px solid #d1d5db',
-            borderRadius: '0.375rem',
-            resize: 'vertical',
-            boxSizing: 'border-box',
-          }}
+          className="mb-2 w-full font-mono text-sm p-3 border rounded resize-y"
         />
-      </div>x
+      </div>
 
-    {/* Review Button */}
-      <button
-        onClick={handleReview}
-        disabled={status === 'loading'}
-        style={{
-          padding: '0.5rem 1.25rem',
-          backgroundColor: status === 'loading' ? '#9ca3af' : '#2563eb',
-          color: 'white',
-          border: 'none',
-          borderRadius: '0.375rem',
-          cursor: status === 'loading' ? 'not-allowed' : 'pointer',
-          marginBottom: '2rem',
-        }}
-      >
-        {status === 'loading' ? 'Reviewing...' : status === 'idle' ? 'Review Again' : 'Review Code'}
-      </button>
-
-      {/* Reset Button */}
-      <button
-        onClick={() => {
-          setCode('');
-          setLanguage(LANGUAGES[0]);
-          setStatus('idle');
-          setStreaming('');
-          setResult(null);
-          setErrorMessage('');
-        }}
-        style={{
-          padding: '0.5rem 1.25rem',
-          backgroundColor: '#ef4444',
-          color: 'white',
-          border: 'none',
-          borderRadius: '0.375rem',
-          cursor: 'pointer',
-          marginBottom: '2rem',
-        }}
-      >
-        Reset
-      </button>
+    <div className="flex justify-between">
+        {/* Reset Button */}
+            <button
+                onClick={() => {
+                setCode('');
+                setLanguage(LANGUAGES[0]);
+                setStatus('idle');
+                setStreaming('');
+                setResult(null);
+                setErrorMessage('');
+                }}
+                className="mb-4 px-4 py-2 rounded bg-red-600 text-white">
+                Reset
+            </button>
+        {/* Review Button */}
+            <button
+                onClick={handleReview}
+                disabled={status === 'loading'}
+                className="mb-4 px-4 py-2 rounded bg-blue-600 text-white disabled:bg-gray-400">
+                {status === 'loading' ? 'Reviewing...' : status === 'idle' ? 'Review' : 'Review Code'}
+            </button>
+    </div>
 
 
       {/* Streaming raw output */}
       {status === 'loading' && streaming && (
-        <pre style={{
-          background: '#f3f4f6',
-          padding: '1rem',
-          borderRadius: '0.375rem',
-          fontSize: '0.75rem',
-          overflow: 'auto',
-          marginBottom: '2rem',
-        }}>
+        <pre 
+        className="mb-4 p-4 bg-gray-100 rounded text-sm overflow-auto">
           {streaming}
         </pre>
       )}
 
       {/* Error */}
       {status === 'error' && (
-        <div style={{ color: '#ef4444', marginBottom: '1rem' }}>
+        <div className="border rounded mb-4 p-4">
           {errorMessage || 'Something went wrong.'}
         </div>
       )}
 
       {/* Structured results */}
       {status === 'idle' && result && (
-        <div>
+        <div className="mb-4 p-4 border rounded">
           {/* Summary */}
-          <div style={{
-            background: '#f9fafb',
-            border: '1px solid #e5e7eb',
-            borderRadius: '0.5rem',
-            padding: '1rem',
-            marginBottom: '1.5rem',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <p style={{ margin: 0 }}>{result.summary}</p>
-              <span style={{
-                fontSize: '1.5rem',
-                fontWeight: 'bold',
-                color: result.score !== null && result.score >= 70 ? '#16a34a' : result.score !== null && result.score >= 40 ? '#d97706' : '#dc2626',
-              }}>
+          <div className="mb-4 p-4 rounded">
+            <div className="flex justify-between items-center">
+              <p className="m-0">{result.summary}</p>
+              <span className={`text-white text-2xl border rounded font-bold ${result.score >= 90 ? 'bg-green-600 border-green-600' : result.score >= 70 ? 'bg-yellow-500 border-yellow-500' : 'bg-red-600 border-red-600'} p-3 ml-4`}>
                 {result.score}/100
               </span>
             </div>
@@ -204,8 +166,8 @@ return (
 
           {/* Categories */}
           {result.categories && result.categories.map(({ category, findings }) => (
-            <div key={category} style={{ marginBottom: '1.5rem' }}>
-              <h2 style={{ textTransform: 'capitalize', marginBottom: '0.75rem', fontSize: '1rem', fontWeight: '600' }}>
+            <div key={category} className="mb-6">
+              <h2 className="capitalize mb-3 text-base font-semibold">
                 {category}
               </h2>
 
@@ -214,27 +176,14 @@ return (
                   finding.severity === 'critical' ? 'critical' : finding.severity === 'warning' ? 'warning' : 'info'
                 ];
                 return (
-                  <div key={i} style={{
-                    border: `1px solid ${style.border}`,
-                    background: style.bg,
-                    borderRadius: '0.375rem',
-                    padding: '0.75rem',
-                    marginBottom: '0.5rem',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div key={i} className={`border ${style.classes} rounded p-3 mb-2`}>
+                    <div className="flex justify-between">
                       <strong>{finding.title}</strong>
-                      <span style={{ fontSize: '0.75rem' }}>{style.label}</span>
+                      <span className="text-xs">{style.label}</span>
                     </div>
-                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem' }}>{finding.description}</p>
+                    <p className="mt-2 text-sm">{finding.description}</p>
                     {finding.suggestedFix && (
-                      <pre style={{
-                        marginTop: '0.5rem',
-                        background: 'rgba(0,0,0,0.05)',
-                        padding: '0.5rem',
-                        borderRadius: '0.25rem',
-                        fontSize: '0.75rem',
-                        whiteSpace: 'pre-wrap',
-                      }}>
+                      <pre className="mt-2 bg-gray-100 p-2 rounded text-xs whitespace-pre-wrap">
                         {finding.suggestedFix}
                       </pre>
                     )}

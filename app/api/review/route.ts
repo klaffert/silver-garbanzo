@@ -1,16 +1,20 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ReviewRequestSchema } from '@/lib/schemas';
 import { buildPrompt } from '@/lib/prompts';
+import { checkRateLimit } from '@/lib/ratelimit';
 
 export async function POST(req: Request) {
-    console.log('route hit');
 
-    // TODO: ratelimit
+    // 0. Check rate limit
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const allowed = await checkRateLimit(ip);
+    if (!allowed) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), { status: 429, headers: { 'Content-Type': 'application/json' } });
+    }
 
     // 1. Validate input 
     const body = await req.json();
     const parsed = ReviewRequestSchema.safeParse(body); // parse throws on failure, safeParse returns proper error
-    console.log('parsed:', parsed.success, parsed.success ? parsed.data : parsed.error);
 
     if (!parsed.success) {
         return new Response(JSON.stringify({ error: 'Invalid input', details: parsed.error.issues }), { status: 400, headers: { 'Content-Type': 'application/json' } });
