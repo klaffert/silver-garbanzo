@@ -1,0 +1,46 @@
+import Anthropic from '@anthropic-ai/sdk';
+import { ReviewRequestSchema } from '@/lib/schemas';
+import { buildPrompt } from '@/lib/prompts';
+
+export async function POST(req: Request) {
+    console.log('route hit');
+
+    // TODO: ratelimit
+
+    // 1. Validate input 
+    const body = await req.json();
+    const parsed = ReviewRequestSchema.safeParse(body); // parse throws on failure, safeParse returns proper error
+    console.log('parsed:', parsed.success, parsed.success ? parsed.data : parsed.error);
+
+    if (!parsed.success) {
+        return new Response(JSON.stringify({ error: 'Invalid input', details: parsed.error.issues }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // 2. Call Claude and stream back
+    try {
+        const client = new Anthropic();
+        const stream = client.messages.stream({
+                model: 'claude-haiku-4-5',
+                max_tokens: 2000,
+                messages: [{ role: 'user', content: buildPrompt(parsed.data) }],
+        })
+
+        const readable = new ReadableStream({
+            async start(controller) {
+                for await (const chunk of stream) {
+                    if (
+                        chunk.type === 'content_block_delta' &&
+                        chunk.delta.type === 'text_delta'
+                    ) {
+                        controller.enqueue(new TextEncoder().encode(chunk.delta.text));
+                    }
+                }
+                controller.close();
+            }
+        })
+        return new Response(readable, { headers: { 'Content-Type': 'text/plain' } });
+    } catch (err) {
+        console.error('Anthropic error:', JSON.stringify(err, null, 2));
+        return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+    }
+}
